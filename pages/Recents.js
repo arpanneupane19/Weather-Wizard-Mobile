@@ -9,26 +9,41 @@ import {
   Alert,
   RefreshControl,
 } from "react-native";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import * as Haptics from "expo-haptics";
 import { apiKey } from "../Vars.js"; // File contains api key
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons";
+import * as Network from "expo-network";
 
 export default function Recents({ navigation }) {
   let json = require("./Recents.json");
+  const [isNetworkConnected, setIsNetworkConnected] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [recentsCount, setRecentsCount] = useState(json.recents.length);
+
+  const network = async () => {
+    const isInternetReachable = await (
+      await Network.getNetworkStateAsync()
+    ).isInternetReachable;
+    setIsNetworkConnected(isInternetReachable);
+  };
+
+  useEffect(() => {
+    network();
+  }, []);
 
   const onRefresh = () => {
     setRefreshing(true);
     json.recents = [];
     setRecentsCount(0);
+    network();
     setRefreshing(false);
   };
 
-  const displayWeather = (city) => {
+  const displayWeather = (location) => {
+    network();
     fetch(
-      `https://api.openweathermap.org/data/2.5/weather?q=${city}&units=imperial&APPID=${apiKey}`
+      `https://api.openweathermap.org/data/2.5/weather?q=${location}&units=imperial&APPID=${apiKey}`
     )
       .then((response) => response.json())
       .then((data) => {
@@ -37,9 +52,8 @@ export default function Recents({ navigation }) {
             `${data.name}, ${data.sys.country}`,
             `Temperature: ${Math.round(data.main.temp)}ºF / ${Math.round(
               ((data.main.temp - 32) * 5) / 9
-            )}ºC \n Weather: ${data.weather[0].main} \n Weather Description: ${
-              data.weather[0].description[0].toUpperCase() +
-              data.weather[0].description.substring(1)
+            )}ºC \n Weather: ${data.weather[0].main} \n Weather Description: ${data.weather[0].description[0].toUpperCase() +
+            data.weather[0].description.substring(1)
             }`,
             [
               {
@@ -101,29 +115,38 @@ export default function Recents({ navigation }) {
           />
         }
       >
-        {recentsCount === 0 ? (
-          <View style={styles.recents}>
-            <Text style={styles.noRecentsText}>
-              Your recent searches will be here.
-            </Text>
-          </View>
+        {isNetworkConnected ? (
+          <>
+            {recentsCount === 0 ? (
+              <View style={styles.recents}>
+                <Text style={styles.noRecentsText}>
+                  Your recent searches will be here.
+                </Text>
+              </View>
+            ) : (
+              <View style={styles.recents}>
+                {json.recents.map((item, key) => (
+                  <TouchableOpacity
+                    key={key}
+                    style={styles.recentItem}
+                    onPress={() =>
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy) &&
+                      displayWeather([item.city, item.country])
+                    }
+                  >
+                    <View style={styles.recentItemText}>
+                      <Text style={styles.city}>{item.city}</Text>
+                      <Text style={styles.country}>{item.country}</Text>
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+          </>
         ) : (
-          <View style={styles.recents}>
-            {json.recents.map((item, key) => (
-              <TouchableOpacity
-                key={key}
-                style={styles.recentItem}
-                onPress={() =>
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy) &&
-                  displayWeather(item.city)
-                }
-              >
-                <View style={styles.recentItemText}>
-                  <Text style={styles.city}>{item.city}</Text>
-                  <Text style={styles.country}>{item.country}</Text>
-                </View>
-              </TouchableOpacity>
-            ))}
+          <View style={styles.networkStats}>
+            <MaterialCommunityIcons size={45} name="wifi-off" color="#ff8c00" />
+            <Text>Please connect to the internet to receive weather data.</Text>
           </View>
         )}
       </ScrollView>
@@ -214,5 +237,26 @@ const styles = StyleSheet.create({
   country: {
     fontSize: 24,
     fontWeight: "300",
+  },
+
+  networkStats: {
+    marginTop: "7%",
+    height: "20%",
+    width: "90%",
+    shadowColor: "#000000",
+    shadowOffset: {
+      width: 0,
+      height: 3,
+    },
+    shadowOpacity: 0.17,
+    shadowRadius: 3.05,
+    elevation: 4,
+    padding: "4.5%",
+    backgroundColor: "#f2f2f2",
+    borderRadius: 12,
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "space-evenly",
   },
 });
