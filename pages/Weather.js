@@ -9,6 +9,7 @@ import {
   ScrollView,
   Alert,
   RefreshControl,
+  Linking,
 } from "react-native";
 import { useState, useEffect } from "react";
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons";
@@ -16,6 +17,7 @@ import { WeatherConditions } from "../utils/WeatherConditions.js";
 import * as Haptics from "expo-haptics";
 import * as Network from "expo-network";
 import { apiKey } from "../Vars.js"; // File contains api key
+const degreesToDirection = require("degrees-to-direction");
 
 export default function Weather({ navigation }) {
   const [isNetworkConnected, setIsNetworkConnected] = useState(false);
@@ -71,10 +73,12 @@ export default function Weather({ navigation }) {
     setRefreshing(true);
     setWeatherData([{}]);
     setCity("");
+    network();
     setRefreshing(false);
   };
 
   const fetchWeather = () => {
+    network();
     fetch(
       `http://api.openweathermap.org/data/2.5/weather?q=${city.trim()}&units=imperial&APPID=${apiKey}`
     )
@@ -106,6 +110,10 @@ export default function Weather({ navigation }) {
           );
         }
       });
+  };
+
+  const openBrowser = (link) => {
+    Linking.openURL(link);
   };
 
   return (
@@ -177,8 +185,8 @@ export default function Weather({ navigation }) {
                       {unit
                         ? `${Math.round(weatherData.main.temp)}°F`
                         : `${Math.round(
-                            ((weatherData.main.temp - 32) * 5) / 9
-                          )}ºC`}
+                          ((weatherData.main.temp - 32) * 5) / 9
+                        )}ºC`}
                     </Text>
                   </TouchableOpacity>
                 </View>
@@ -215,9 +223,22 @@ export default function Weather({ navigation }) {
 
                 <View style={styles.weatherDataInfo}>
                   <Text style={styles.cityText}>Weather Wizard</Text>
-                  <Text style={styles.weather}>
-                    Developed by Arpan Neupane.
-                  </Text>
+                  {isNetworkConnected ? (
+                    <Text style={styles.weather}>
+                      Developed by{" "}
+                      <Text
+                        style={styles.myName}
+                        onPress={() => openBrowser("https://arpanneupane.com")}
+                      >
+                        Arpan Neupane
+                      </Text>
+                      .
+                    </Text>
+                  ) : (
+                    <Text style={styles.weather}>
+                      Developed by Arpan Neupane.
+                    </Text>
+                  )}
                 </View>
 
                 <View style={styles.dateAndTime}>
@@ -244,13 +265,13 @@ export default function Weather({ navigation }) {
               >
                 {unit
                   ? `L: ${Math.round(
-                      weatherData.main.temp_min
-                    )}°F / H: ${Math.round(weatherData.main.temp_max)}°F`
+                    weatherData.main.temp_min
+                  )}°F / H: ${Math.round(weatherData.main.temp_max)}°F`
                   : `L: ${Math.round(
-                      ((weatherData.main.temp_min - 32) * 5) / 9
-                    )}ºC / H: ${Math.round(
-                      ((weatherData.main.temp_max - 32) * 5) / 9
-                    )}ºC`}
+                    ((weatherData.main.temp_min - 32) * 5) / 9
+                  )}ºC / H: ${Math.round(
+                    ((weatherData.main.temp_max - 32) * 5) / 9
+                  )}ºC`}
               </Text>
             </View>
             <ScrollView contentContainerStyle={styles.extraItems}>
@@ -268,8 +289,8 @@ export default function Weather({ navigation }) {
                   {unit
                     ? `${Math.round(weatherData.main.feels_like)}°F`
                     : `${Math.round(
-                        ((weatherData.main.feels_like - 32) * 5) / 9
-                      )}ºC`}
+                      ((weatherData.main.feels_like - 32) * 5) / 9
+                    )}ºC`}
                 </Text>
               </View>
               <View style={styles.extraItem}>
@@ -296,6 +317,12 @@ export default function Weather({ navigation }) {
                 <Text style={{ color: "#c0c0c0" }}>AIR PRESSURE</Text>
                 <Text style={styles.extraItemDetail}>
                   {weatherData.main.pressure}
+                </Text>
+              </View>
+              <View style={styles.extraItem}>
+                <Text style={{ color: "#c0c0c0" }}>WIND DIRECTION</Text>
+                <Text style={styles.extraItemDetail}>
+                  {degreesToDirection(weatherData.wind.deg)}
                 </Text>
               </View>
               <View style={styles.extraItem}>
@@ -531,5 +558,9 @@ const styles = StyleSheet.create({
   recentsText: {
     fontWeight: "300",
     fontSize: 16,
+  },
+
+  myName: {
+    color: "#008cff",
   },
 });
